@@ -20,11 +20,12 @@ function App() {
 
     // 初始数据
     const initialData = [
-        ['2024-01-01', 100],
-        ['2024-01-02', 120],
-        ['', ''],
+        ['2024-01-01', 100, '', ''],
+        ['2024-01-02', 120, '', ],
+        ['', '', '', ''],
     ];
-
+    // 创建一个能被 React 监测到的数据仓库: 变动的数据集和数据修改函数
+    const [tableData, setTableData] = useState(initialData);
 
     // --- 功能逻辑 ---
 
@@ -49,7 +50,8 @@ function App() {
     };
 
     // 可视化当前的输入数据（不运行预测模型）
-    const plotInputData = () => {
+    const plotInputData = (e) => {
+
         // 1. 从 Handsontable 引用中获取实时数据实例
         const hotInstance = hotRef.current.hotInstance;
         // 获取所有数据（二维数组格式）
@@ -108,7 +110,7 @@ function App() {
 
                     <div className="header-right">
                         <Space size="large">
-                            <Menu theme={darkMode ? "dark" : "light"} mode="horizontal" defaultSelectedKeys={["1"]}>
+                            <Menu  theme={darkMode ? "dark" : "light"} mode="horizontal" defaultSelectedKeys={["1"]}>
                                 <Menu.Item key="1">Dashboard</Menu.Item>
                                 <Menu.Item key="2">About</Menu.Item>
                             </Menu>
@@ -129,10 +131,9 @@ function App() {
                     <Col xs={24} lg={5}>
                         <Card title="Data Actions" className="side-card">
                             <Space orientation={"vertical"} style={{width: '100%'}}>
-                                <Button block icon={<ImportOutlined/>}>Import Excel</Button>
-                                <Button block icon={<ImportOutlined/>}>CSV Upload</Button>
+                                <Button type={"primary"} className="run-button-gradient" block icon={<ImportOutlined/>}>Import Excel</Button>
                                 <Divider style={{margin: '12px 0'}}/>
-                                <Button block danger icon={<DeleteOutlined/>} onClick={clearData}>
+                                <Button type={"primary"} className="run-button-gradient" block danger icon={<DeleteOutlined/>} onClick={clearData}>
                                     Clear All
                                 </Button>
                             </Space>
@@ -145,7 +146,15 @@ function App() {
                             <div className="excel-editor-container">
                                 <HotTable
                                     ref={hotRef}
-                                    data={initialData}
+                                    data={tableData}
+                                    afterChange={(changes) => {
+                                        if (changes) {
+                                            // 当用户粘贴或修改数据时，立即更新 tableData 状态
+                                            // 这样重新渲染时，数据就能保持住
+                                            const updatedData = hotRef.current.hotInstance.getData();
+                                            setTableData(updatedData);
+                                        }
+                                    }}
                                     colHeaders={['Date index', 'Value']}
                                     rowHeaders={true}
                                     width="100%"
@@ -173,7 +182,7 @@ function App() {
                                 <Button
                                     type="primary"
                                     block
-                                    size="large"
+                                    // size="large"
                                     icon={<BarChartOutlined/>}
                                     onClick={plotInputData} // 绑定新的处理函数
                                     className="run-button-gradient"
@@ -209,7 +218,6 @@ function App() {
                                                 type: "scatter",
                                                 mode: "lines+markers",
                                                 name: "Actual",
-                                                marker: {color: '#a68b6d'}
                                             },
                                             {
                                                 x: result.time,
