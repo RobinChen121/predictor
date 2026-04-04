@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/RobinChen121/online-predictor/static/css/main.aec2609f.css",
-    "main.js": "/RobinChen121/online-predictor/static/js/main.1868a9b2.js",
-    "static/js/453.825386d9.chunk.js": "/RobinChen121/online-predictor/static/js/453.825386d9.chunk.js",
-    "index.html": "/RobinChen121/online-predictor/index.html",
-    "main.aec2609f.css.map": "/RobinChen121/online-predictor/static/css/main.aec2609f.css.map",
-    "main.1868a9b2.js.map": "/RobinChen121/online-predictor/static/js/main.1868a9b2.js.map",
-    "453.825386d9.chunk.js.map": "/RobinChen121/online-predictor/static/js/453.825386d9.chunk.js.map"
+    "main.css": "/online-predictor/static/css/main.aec2609f.css",
+    "main.js": "/online-predictor/static/js/main.a4cf3a00.js",
+    "static/js/453.825386d9.chunk.js": "/online-predictor/static/js/453.825386d9.chunk.js",
+    "index.html": "/online-predictor/index.html",
+    "main.aec2609f.css.map": "/online-predictor/static/css/main.aec2609f.css.map",
+    "main.a4cf3a00.js.map": "/online-predictor/static/js/main.a4cf3a00.js.map",
+    "453.825386d9.chunk.js.map": "/online-predictor/static/js/453.825386d9.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.aec2609f.css",
-    "static/js/main.1868a9b2.js"
+    "static/js/main.a4cf3a00.js"
   ]
 }
