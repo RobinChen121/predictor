@@ -1,5 +1,5 @@
 import React, {useState, useRef} from "react";
-import {Layout, Menu, Button, Tooltip, Space, message, Modal, Select} from "antd";
+import {Layout, Menu, Button, Tooltip, Space, message, Modal, Select, Form, ConfigProvider, theme, Divider} from "antd";
 import {SunOutlined, MoonOutlined} from "@ant-design/icons";
 import {registerAllModules} from 'handsontable/registry';
 import {useNavigate, Routes, Route, Navigate} from "react-router-dom";
@@ -12,8 +12,7 @@ import AboutPage from './about';
 import './styles/App.css';
 
 
-
-registerAllModules();
+registerAllModules(); // handsontable
 
 const {Header, Footer} = Layout;
 
@@ -25,7 +24,9 @@ function App() {
     const [darkMode, setDarkMode] = useState(false);
     const hotRef = useRef(null);
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [activeModal, setActiveModal] = useState(null); // 存储当前的 Modal ID
+    // 关闭弹窗的统一方法
+    const closeModal = () => setActiveModal(null);
     const [columnOptions, setColumnOptions] = useState([]); // 存储列名
     const [xAxis, setXAxis] = useState(null);               // 横轴选中的列
     const [yAxes, setYAxes] = useState([]);                 // 纵轴选中的列（多选）
@@ -92,7 +93,88 @@ function App() {
         }));
 
         setColumnOptions(options);
-        setIsModalOpen(true);
+        setActiveModal('visualization');
+    };
+
+    const handleExponentialSmoothClick = () => {
+        // 从 Handsontable 实例获取最新的列头
+        const headers = hotRef.current.hotInstance.getColHeader();
+        const options = headers.map((header, index) => ({
+            label: header || `Column ${index + 1}`,
+            value: index // 存索引，方便后面取数据
+        }));
+
+        setColumnOptions(options);
+        setActiveModal('exponential-smoothing');
+    };
+
+    const handleExponentialSmooth = async (yAxes) => {
+        const hot = hotRef.current.hotInstance;
+        // 从 Handsontable 实例获取最新的列头
+        const headers = hot.getColHeader();
+        const options = headers.map((header, index) => ({
+            label: header || `Column ${index + 1}`,
+            value: index // 存索引，方便后面取数据
+        }));
+
+        setColumnOptions(options);
+        setActiveModal('exponential-smoothing');
+
+        // yAxes 存储的是被选中的列索引
+        if (!yAxes) {
+            message.warning("Please select one column for prediction");
+            return;
+        }
+
+        const targetColIndex = yAxes;
+        const rawData = hot.getDataAtCol(targetColIndex);
+
+        // 过滤掉非数字或空值，转为浮点数
+        const numericData = rawData
+            .map(val => parseFloat(val))
+            .filter(val => !isNaN(val));
+
+        try {
+            // 调用 Pyodide 运行 Python 代码
+            // 假设 pyodide 已经初始化好，并且安装了 statsmodels
+            const pyodide = window.pyodide;
+
+            // 将 JS 数组传给 Python
+            pyodide.globals.set("input_data", numericData);
+
+            const pythonCode = `
+import numpy as np
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+# 转换数据
+data = np.array(input_data)
+
+# 执行简单指数平滑 (Simple Exponential Smoothing)
+# 你也可以根据需求改为 Holt (trend='add') 或 Holt-Winters (seasonal='add')
+model = ExponentialSmoothing(data, initialization_method="estimated").fit()
+forecast = model.forecast(5)  # 预测未来 5 个点
+
+# 返回结果给 JS
+forecast.tolist()
+        `;
+
+            const forecastResults = await pyodide.runPythonAsync(pythonCode);
+
+            // 3. 将预测结果添加到 Handsontable
+            // 方案：在原数据末尾追加行，或者新增一列
+            const lastRow = hot.countRows();
+
+            // 简单的演示：将预测值追加到目标列的末尾
+            const changes = forecastResults.map((val, i) => [lastRow + i, targetColIndex, val.toFixed(2)]);
+            hot.setDataAtCell(changes);
+
+            message.success("Prediction completed and added to table!");
+            setActiveModal(null); // 关闭弹窗
+
+        } catch (error) {
+            console.error("Python Error:", error);
+            message.error("Prediction failed. Make sure statsmodels is loaded.");
+        }
     };
 
     // 可视化当前的输入数据（不运行预测模型）
@@ -158,124 +240,157 @@ function App() {
         message.success(`Successfully visualized ${cleanData.length} data points.`).then(r => '');
     };
 
-    // 运行预测
-    const runPrediction = async () => {
-        const tableData = hotRef.current.hotInstance.getData();
-        const cleanData = tableData.filter(row => row[0] && row[1]);
-        if (cleanData.length === 0) return message.warning("请先输入有效数据！");
-
-        try {
-            const res = await fetch("http://127.0.0.1:8000/predict", {
-                method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({data: cleanData}),
-            });
-            const json = await res.json();
-            setResult(json);
-            message.success("预测完成！");
-        } catch (error) {
-            message.error("预测请求失败，请检查后端服务。");
-        }
-    };
-
-    return (<Layout className={darkMode ? "dark" : "light"}>
-        <Header className={`app-header ${darkMode ? "dark" : "light"}`}>
-            <div className="header-container">
-                {/* 左侧：Logo */}
-                <div className="header-left">
-                    <div className="header-logo"
-                         style={{cursor: 'pointer'}}   // 鼠标悬停显示手型，提示可点击
-                         onClick={() => navigate("/")}   // 点击回到 Dashboard
-                    >Dr Zhen Chen's Forecaster
-                    </div>
-                </div>
-
-                {/* --- 重点：重新找回的翻译插件容器 --- */}
-                <div className="header-center">
-                    <div id="google_translate_element"></div>
-                </div>
-                {/* ---------------------------------- */}
-
-                <div className="header-right">
-                    <Space
-                        // size="large"
-                    >
-                        <Menu theme={darkMode ? "dark" : "light"} mode="horizontal"
-                            // 使用路径作为 key，刷新页面也能正确高亮
-                              selectedKeys={[window.location.pathname]}
-                              onClick={({key}) => navigate(key)}
-                        >
-                            <Menu.Item key="/">Dashboard</Menu.Item>
-                            <Menu.Item key="/about">About</Menu.Item>
-                        </Menu>
-
-                        <Tooltip title="Switch Theme">
-                            <Button type="text" onClick={toggleTheme} className={"theme-button"}
-                                    icon={darkMode ? <SunOutlined/> : <MoonOutlined/>}/>
-                        </Tooltip>
-                    </Space>
-                </div>
-            </div>
-        </Header>
-
-        {/*弹窗组件*/}
-        <Modal
-            title="Select Columns for Visualization"
-            destroyOnHidden={true} //  每次打开都重新初始化内部组件
-            open={isModalOpen}
-            onOk={() => {
-                plotInputData(xAxis, yAxes); // 确认时执行绘图逻辑
-                setIsModalOpen(false);
+    return (
+        // 1. 用 ConfigProvider 包裹整个应用或 Modal 所在区域
+        <ConfigProvider
+            theme={{
+                // 2. 根据你的变量决定使用哪种算法
+                algorithm: darkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+                token: {
+                    // 试试这个紫色，或者换成你喜欢的任何颜色
+                    colorPrimary: darkMode ? '#440bb5' : '#6d5995',
+                },
             }}
-            onCancel={() => setIsModalOpen(false)}
         >
-            <div style={{marginBottom: 16}}>
-                <p>Select X-Axis (Horizontal):</p>
-                <Select
-                    style={{width: '75%'}}
-                    placeholder="Choose one column"
-                    options={[
-                        { label: 'Default Index (1, 2, 3...)', value: 'default_index' },
-                        // ... 叫做扩展运算符，把数组里的每个元素展开放到新数组里
-                        ...columnOptions
-                    ]}
-                    onChange={(val) => setXAxis(val)}
-                />
-            </div>
-            <div>
-                <p>Select Y-Axis (Verticals):</p>
-                <Select
-                    mode="multiple" // 允许多选
-                    style={{width: '75%'}}
-                    placeholder="Choose one or more columns"
-                    options={columnOptions}
-                    // 关键配置：限制下拉菜单的高度并允许滚动
-                    onChange={(val) => setYAxes(val)}
-                />
-            </div>
-        </Modal>
 
-        {/* 2. 核心修复：Routes 应该放在这里，控制主体内容的切换 */}
-        <Routes>
-            <Route path="/" element={
-                <Dashboard
-                    darkMode={darkMode}
-                    plotInputData={plotInputData}
-                    hotRef={hotRef}
-                    tableData={tableData}
-                    setTableData={setTableData} // <--- 确保这里也写了传递逻辑
-                    columns={columns}
-                    handleSetHeader={handleSetHeader}
-                    resetData={resetData}
-                    handleVisualizeClick={handleVisualizeClick}
-                    runPrediction={runPrediction}
-                    result={result}
-                />
-            }/>
-            <Route path="/about" element={<AboutPage/>}/>
-            <Route path="*" element={<Navigate to="/" replace/>}/> {/* 所有未匹配的都跳到 Dashboard */}
-        </Routes>
+            <Layout className={darkMode ? "dark" : "light"}>
 
-        <Footer className="app-footer">An online forecaster ©Dr Zhen Chen 2026</Footer>
-    </Layout>);
+                <Header className={`app-header ${darkMode ? "dark" : "light"}`}>
+                    <div className="header-container">
+                        {/* 左侧：Logo */}
+                        <div className="header-left">
+                            <div className="header-logo"
+                                 style={{cursor: 'pointer'}}   // 鼠标悬停显示手型，提示可点击
+                                 onClick={() => navigate("/")}   // 点击回到 Dashboard
+                            >Dr Zhen Chen's Forecaster
+                            </div>
+                        </div>
+
+                        {/* --- 重点：重新找回的翻译插件容器 --- */}
+                        <div className="header-center">
+                            <div id="google_translate_element"></div>
+                        </div>
+                        {/* ---------------------------------- */}
+
+                        <div className="header-right">
+                            <Space
+                                // size="large"
+                            >
+                                <Menu theme={darkMode ? "dark" : "light"} mode="horizontal"
+                                    // 使用路径作为 key，刷新页面也能正确高亮
+                                      selectedKeys={[window.location.pathname]}
+                                      onClick={({key}) => navigate(key)}
+                                >
+                                    <Menu.Item key="/">Home</Menu.Item>
+                                    <Menu.Item key="/about">About</Menu.Item>
+                                </Menu>
+
+                                <Tooltip title="Switch Theme">
+                                    <Button type="text" onClick={toggleTheme} className={"theme-button"}
+                                            icon={darkMode ? <SunOutlined/> : <MoonOutlined/>}/>
+                                </Tooltip>
+                            </Space>
+                        </div>
+                    </div>
+                </Header>
+
+                {/*弹窗组件*/}
+                <Modal
+                    title="Select Columns for Visualization"
+                    destroyOnHidden={true} //  每次打开都重新初始化内部组件
+                    open={activeModal === 'visualization'}
+                    onOk={() => {
+                        plotInputData(xAxis, yAxes); // 确认时执行绘图逻辑
+                        closeModal();
+                    }}
+                    onCancel={closeModal}
+                >
+                    <div
+                        // style={{marginBottom: 16}}
+                    >
+                        <p>Select X-Axis (Horizontal):</p>
+                        <Select
+                            style={{width: '75%'}}
+                            placeholder="Choose one column"
+                            options={[
+                                {label: 'Default (1, 2, 3...)', value: 'default_index'},
+                                // ... 叫做扩展运算符，把数组里的每个元素展开放到新数组里
+                                ...columnOptions
+                            ]}
+                            onChange={(val) => setXAxis(val)}
+                        />
+                    </div>
+                    <div>
+                        <p>Select Y-Axis (Verticals):</p>
+                        <Select
+                            mode="multiple" // 允许多选
+                            style={{width: '75%'}}
+                            placeholder="Choose one or more columns"
+                            options={columnOptions}
+                            onChange={(val) => setYAxes(val)}
+                        />
+                    </div>
+                </Modal>
+
+                <Modal
+                    title="Exponential Smoothing Settings"
+                    destroyOnHidden={true} //  每次打开都重新初始化内部组件
+                    open={activeModal === 'exponential-smoothing'}
+                    onOk={() => {
+                        handleExponentialSmooth(yAxes); // 确认时执行绘图逻辑
+                        closeModal();
+                    }}
+                    onCancel={closeModal}
+                >
+                    <Form
+                        layout="horizontal"
+                        // labelCol={{ span: 6 }}   // 文字占多宽
+                        // wrapperCol={{ span: 18 }} // 下拉框占多宽
+                    >
+                        <Form.Item label="Select time index">
+                            <Select
+                                placeholder="Choose one column"
+                                options={[{label: 'Default (1, 2, 3...)', value: 'default_index'}, ...columnOptions]}
+                                onChange={setXAxis}
+                            />
+                        </Form.Item>
+
+                        <Form.Item label="Select data for prediction">
+                            <Select
+                                // mode="multiple"
+                                maxTagCount="responsive"
+                                options={columnOptions}
+                                onChange={setYAxes}
+                            />
+                        </Form.Item>
+                    </Form>
+                    <Divider/>
+                </Modal>
+
+                {/* 2. 核心修复：Routes 应该放在这里，控制主体内容的切换 */}
+                <Routes>
+                    <Route path="/" element={
+                        <Dashboard
+                            darkMode={darkMode}
+                            plotInputData={plotInputData}
+                            hotRef={hotRef}
+                            tableData={tableData}
+                            setTableData={setTableData} // <--- 确保这里也写了传递逻辑
+                            columns={columns}
+                            handleSetHeader={handleSetHeader}
+                            resetData={resetData}
+                            handleVisualizeClick={handleVisualizeClick}
+                            handleExponentialSmoothClick={handleExponentialSmoothClick}
+                            result={result}
+                        />
+                    }/>
+                    <Route path="/about" element={<AboutPage/>}/>
+                    <Route path="*" element={<Navigate to="/" replace/>}/> {/* 所有未匹配的都跳到 Dashboard */}
+                </Routes>
+
+                <Footer className="app-footer">An online forecaster ©Dr Zhen Chen 2026</Footer>
+            </Layout>
+        </ConfigProvider>);
 }
 
 export default App;

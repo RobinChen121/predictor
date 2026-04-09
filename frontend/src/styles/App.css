@@ -26,7 +26,7 @@
     --container-bg: #1a142e; /* 深紫色卡片 */
     --text-main: #f5f3ff;
     --text-sec: #a5a6a8;
-    --primary-color: #a78bfa; /* 亮紫色 */
+    --primary-color: #3c2a77; /* 亮紫色 */
     --accent-color: #22d3ee; /* 亮青色 */
     --header-bg: rgba(15, 10, 30, 0.8);
     --border-color: #cbc2ea;
@@ -72,7 +72,7 @@ body {
     backdrop-filter: blur(10px);
     background: var(--header-bg) !important;
     border-bottom: 2px solid var(--border-color); /* 现在边框会横跨全屏了 */
-    height: 64px;
+    height: 55px;
     display: flex; /* 这里的 flex 是为了让内层容器居中 */
     justify-content: center; /* 内容居中 */
 }
@@ -171,6 +171,12 @@ span.ant-menu-title-content {
 .main-card .ant-card-head-title {
     padding: 0; /* 减少上下内边距 */
     font-size: 15px; /* 可选：稍微缩小字号让比例更协调 */
+    border-bottom: 4px solid var(--border-color);
+}
+/*修改分界线颜色*/
+/*有时候写两层是因为权重问题，或者后面写 !important*/
+.ant-card .ant-card-head {
+    border-bottom: 1px solid var(--border-color);
 }
 
 /* 统一修改这三个 Card 的标题颜色 */
@@ -185,6 +191,8 @@ span.ant-menu-title-content {
 
 .dark .side-card, .dark .main-card {
     border: 1px solid var(--border-color) !important;
+/*// 修改 Card 标题下方的分界线颜色*/
+    --ant-color-split: var(--border-color);
 }
 
 /* 1. 确保 Card 容器没有内部间隙 */
@@ -227,7 +235,7 @@ span.ant-menu-title-content {
 .common-button {
     /* 亮色模式下是深灰黑，深色模式下会根据变量变成亮灰 */
     background: var(--primary-color) !important;
-    color: var(--bg-color) !important; /* 文字颜色与背景反转 */
+    color: #fcfaff !important; /* 文字颜色与背景反转 */
     border: none !important;
     height: 48px !important;
     border-radius: 8px !important;
@@ -236,17 +244,17 @@ span.ant-menu-title-content {
     box-shadow: none !important; /* 去掉发光的蓝色阴影 */
 }
 
-.table-button {
-    /* 亮色模式下是深灰黑，深色模式下会根据变量变成亮灰 */
-    background: var(--primary-color) !important;
-    color: var(--bg-color) !important; /* 文字颜色与背景反转 */
-    /*border: none !important;*/
-    height: 36px !important;
-    border-radius: 8px !important;
-    font-weight: 500 !important;
-    transition: all 0.2s ease !important;
-    box-shadow: none !important; /* 去掉发光的蓝色阴影 */
-}
+/*.table-button {*/
+/*    !* 亮色模式下是深灰黑，深色模式下会根据变量变成亮灰 *!*/
+/*    background: var(--primary-color) !important;*/
+/*    color: var(--bg-color) !important; !* 文字颜色与背景反转 *!*/
+/*    !*border: none !important;*!*/
+/*    height: 36px !important;*/
+/*    border-radius: 8px !important;*/
+/*    font-weight: 500 !important;*/
+/*    transition: all 0.2s ease !important;*/
+/*    box-shadow: none !important; !* 去掉发光的蓝色阴影 *!*/
+/*}*/
 
 .common-button:hover, .table-button:hover {
     transform: none;

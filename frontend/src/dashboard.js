@@ -1,8 +1,8 @@
 import React from "react";
-import {Layout, Row, Col, Card, Space, Button, Divider} from "antd";
+import {Layout, Row, Col, Card, Space, Button} from "antd"; // Divider
 import {HotTable} from '@handsontable/react';
 import Plot from "react-plotly.js";
-import {ImportOutlined, BarChartOutlined, PlayCircleOutlined} from "@ant-design/icons";
+import {ImportOutlined, BarChartOutlined} from "@ant-design/icons"; // PlayCircleOutlined
 import Handsontable from "handsontable";
 
 const {Content} = Layout;
@@ -15,7 +15,7 @@ const Dashboard = ({
                        handleSetHeader,
                        resetData,
                        handleVisualizeClick,
-                       runPrediction,
+                       handleExponentialSmoothClick,
                        result
                    }) => {
     return (
@@ -58,17 +58,17 @@ const Dashboard = ({
                         </Card>
 
                         {/* 原右侧：Analysis (移动到这里，实现上下排列) */}
-                        <Card title="Analysis" className="side-card">
+                        <Card title="Predictors" className="side-card">
                             <Space orientation="vertical" style={{width: '100%'}}>
                                 <Button
                                     // type="primary"
                                     block
                                     // size="large"
-                                    icon={<PlayCircleOutlined/>}
-                                    onClick={runPrediction}
+                                    // icon={<PlayCircleOutlined/>}
+                                    onClick={handleExponentialSmoothClick}
                                     className="common-button"
                                 >
-                                    Run Predictor
+                                    Exponential Smoothing
                                 </Button>
                             </Space>
                         </Card>
