@@ -82,7 +82,6 @@ html, body {
 .header-container {
     width: 100%;
     max-width: 1000px; /* 这里控制内容宽度 */
-    min-width: 480px;   /* 🔥 保持和内容一致 */
     display: flex; /* 内部开启弹性布局 */
     justify-content: space-between; /* Logo 在左，菜单在右 */
     align-items: center;
@@ -132,9 +131,6 @@ span.ant-menu-title-content {
 .app-content-fluid {
     padding: 0 5px;
     min-height: calc(100vh - 128px);
-    max-width: 1000px;   /* 限制最大宽度 */
-    min-width: 480px;    /* 🔥 防止变窄 */
-    margin: 0 auto;      /* 居中 */
 }
 
 /* 卡片样式美化 */
@@ -169,7 +165,6 @@ span.ant-menu-title-content {
 
 .excel-editor-container {
     align-content: center;
-    min-width: 480px;   /* 🔥 防止表格被压缩 */
 }
 
 
@@ -248,11 +243,6 @@ span.ant-menu-title-content {
     font-weight: 500 !important;
     transition: all 0.2s ease !important;
     box-shadow: none !important; /* 去掉发光的蓝色阴影 */
-
-    /* 防止文字溢出 */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 /*.table-button {*/
