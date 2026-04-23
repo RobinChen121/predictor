@@ -8,7 +8,7 @@ import { BrowserRouter } from 'react-router-dom'; // 引入它
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <React.StrictMode>
-        <BrowserRouter> {/* 把它包裹在 App 外面 */}
+        <BrowserRouter basename={"/predictor"}> {/* 把它包裹在 App 外面 */}
             <App />
         </BrowserRouter>
     </React.StrictMode>
