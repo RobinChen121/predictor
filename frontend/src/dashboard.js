@@ -1,5 +1,5 @@
 import React from "react";
-import {Layout, Row, Col, Card, Space, Button} from "antd"; // Divider
+import {Layout, Row, Col, Card, Space, Button, Slider} from "antd"; // Divider
 import {HotTable} from '@handsontable/react';
 import Plot from "react-plotly.js";
 import {ImportOutlined, BarChartOutlined} from "@ant-design/icons"; // PlayCircleOutlined
@@ -8,6 +8,7 @@ import Handsontable from "handsontable";
 const {Content} = Layout;
 const defaultItems = Handsontable.plugins.ContextMenu.DEFAULT_ITEMS;
 
+// 传递 app.js 中的函数和变量
 const Dashboard = ({
                        darkMode, plotInputData, hotRef, tableData,
                        setTableData,
@@ -184,23 +185,42 @@ const Dashboard = ({
 
                 {/*右侧栏*/}
                 <Col xs={24} lg={4}>
-                    <Card className="side-card">
-                        <Space orientation="vertical" style={{width: '100%'}}>
-                            <Button block onClick={handleSetHeader}
-                                // size={"large"}
-                                    className="common-button"
-                            >
-                                Set first row as headers
-                            </Button>
-                            {/*<Divider/>*/}
-                            <Button block onClick={resetData}
-                                // size={"large"}
-                                    className="common-button"
-                            >
-                                Reset to default data
-                            </Button>
-                        </Space>
-                    </Card>
+                    <Space orientation="vertical" size={24} style={{width: '100%'}}>
+                        <Card className="side-card">
+                            <Space orientation="vertical" style={{width: '100%'}}>
+                                <Button block onClick={handleSetHeader}
+                                    // size={"large"}
+                                        className="common-button"
+                                >
+                                    Set first row as headers
+                                </Button>
+                                {/*<Divider/>*/}
+                                <Button block onClick={resetData}
+                                    // size={"large"}
+                                        className="common-button"
+                                >
+                                    Reset to default data
+                                </Button>
+                            </Space>
+                        </Card>
+
+                        <Card className="side-card parameter" title={"Parameters"}>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                                <span>α:</span>
+                                <div style={{flex: 1}}> {
+                                    <Slider
+                                        min={0}
+                                        max={1}
+                                        step={0.1}
+                                        marks={{0: '0', 1: '1'}}
+                                        // onChange={onChange}
+                                        value={0.5}
+                                    />
+                                }
+                                </div>
+                            </div>
+                        </Card>
+                    </Space>
                 </Col>
             </Row>
         </Content>

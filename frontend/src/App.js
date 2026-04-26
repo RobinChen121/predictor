@@ -1,4 +1,5 @@
 import React, {useState, useRef, useEffect} from "react";
+<<<<<<< Updated upstream
 import {
     Layout,
     Menu,
@@ -13,11 +14,15 @@ import {
     theme,
     Divider
 } from "antd";
+=======
+import {Layout, Menu, Button, Tooltip, Space, message, Modal, Select, Form, ConfigProvider, theme, Divider} from "antd";
+>>>>>>> Stashed changes
 import {SunOutlined, MoonOutlined} from "@ant-design/icons";
 import {registerAllModules} from 'handsontable/registry';
 import {useNavigate, Routes, Route, Navigate} from "react-router-dom";
 // 导入分出去的组件，即js文件
-import Dashboard from './dashboard';
+// ./ 表示 “当前文件所在的目录
+import Dashboard from './dashboard'; // 自动找里面前缀是dashboard的文件
 import AboutPage from './about';
 
 // 注意：如果 import 报错，请使用此路径或在 index.html 引入 CDN
@@ -31,6 +36,42 @@ const {Header, Footer} = Layout;
 
 function App() {
     const navigate = useNavigate();
+
+    const [instance, setInstance] = useState(null);
+
+    useEffect(() => {
+        async function init() {
+            // 检查全局变量是否存在（由 public/index.html 中的 <script> 标签注入）
+            // 如果你在 emcc 编译时用了 -s EXPORT_NAME="createPredictModule"，这里就改用 window.createPredictModule
+            const createModule = window.predictModule;
+
+            if (typeof createModule !== 'function') {
+                console.error("Wasm 脚本尚未加载，请确保 index.html 中已引入 predict.js");
+                return;
+            }
+
+            try {
+                const wasmModule = await createModule({
+                    // 关键点：locateFile 决定了去哪里找 .wasm 文件
+                    locateFile: (path) => {
+                        if (path.endsWith('.wasm')) {
+                            // 直接返回根目录下的文件名
+                            // 这个地址容易出错，必须是能下载到wasm文件的那个地址
+                            return '/predictor/predict.wasm';
+                        }
+                        return path;
+                    }
+                });
+
+                console.log("WASM ready", wasmModule);
+                setInstance(wasmModule);
+            } catch (e) {
+                console.error("Wasm 初始化失败:", e);
+            }
+        }
+
+        init();
+    }, []);
 
     const [result, setResult] = useState(null);
     // 右边小括号的内容为左边第一个变量，传递到函数的值，函数名为第二个元素
@@ -155,45 +196,31 @@ function App() {
             .map(val => parseFloat(val))
             .filter(val => !isNaN(val));
 
+        let input_data = null;
         try {
-            // 调用 Pyodide 运行 Python 代码
-            // 假设 pyodide 已经初始化好，并且安装了 statsmodels
-            const pyodide = window.pyodide;
+            function arrayToVectorDouble(arr) {
+                let v = new instance.VectorDouble();
+                arr.forEach(x => v.push_back(x));
+                return v;
+            }
+            function vectorDoubleToArray(v) {
+                const arr = [];
+                const n = v.size();
+                for (let i = 0; i < n; i++) {
+                    arr.push(v.get(i));
+                }
+                return arr;
+            }
 
-            // 将 JS 数组传给 Python
-            pyodide.globals.set("input_data", numericData);
-
-            const pythonCode = `
-import numpy as np
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
-
-# 转换数据
-data = np.array(input_data)
-
-# 执行简单指数平滑 (Simple Exponential Smoothing)
-# 你也可以根据需求改为 Holt (trend='add') 或 Holt-Winters (seasonal='add')
-model = ExponentialSmoothing(data, initialization_method="estimated").fit()
-forecast = model.forecast(5)  # 预测未来 5 个点
-
-# 返回结果给 JS
-forecast.tolist()
-        `;
-
-            const forecastResults = await pyodide.runPythonAsync(pythonCode);
-
-            // 3. 将预测结果添加到 Handsontable
-            // 方案：在原数据末尾追加行，或者新增一列
-            const lastRow = hot.countRows();
-
-            // 简单的演示：将预测值追加到目标列的末尾
-            const changes = forecastResults.map((val, i) => [lastRow + i, targetColIndex, val.toFixed(2)]);
-            hot.setDataAtCell(changes);
-
-            message.success("Prediction completed and added to table!");
-            setActiveModal(null); // 关闭弹窗
+            input_data = arrayToVectorDouble(numericData);
+            const model = new instance.Predictor(input_data);
+            let output = model.singleSmooth(0.5);
+            output = vectorDoubleToArray(output);
+            console.log(output);
+            input_data.delete();
+            model.delete();
 
         } catch (error) {
-            console.error("Python Error:", error);
             message.error("Prediction failed. Make sure statsmodels is loaded.");
         }
     };

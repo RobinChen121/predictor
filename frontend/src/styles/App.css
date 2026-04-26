@@ -26,7 +26,7 @@
     --container-bg: #1a142e; /* 深紫色卡片 */
     --text-main: #f5f3ff;
     --text-sec: #a5a6a8;
-    --primary-color: #3c2a77; /* 亮紫色 */
+    --primary-color: #6a5e91; /* 亮紫色 */
     --accent-color: #22d3ee; /* 亮青色 */
     --header-bg: rgba(15, 10, 30, 0.8);
     --border-color: #cbc2ea;
@@ -97,7 +97,7 @@ html, body {
     font-weight: 700; /* 字体加粗 */
     letter-spacing: -0.5px; /* 紧凑的字间距，更具设计感 */
     /* 渐变色文字效果，这会覆盖文字的原来颜色 */
-    background: linear-gradient(90deg, var(--primary-color), #818cf8);
+    background: linear-gradient(100deg, var(--primary-color), #818cf8);
     -webkit-background-clip: text; /* 将背景裁剪至文字形状 */
     -webkit-text-fill-color: transparent; /* 文字本身设为透明，显示出背景渐变色 */
 }
@@ -228,6 +228,12 @@ span.ant-menu-title-content {
     background-color: var(--bg-color) !important;
     color: var(--text-main) !important;
     /*border-color: var(--border-color) !important;*/
+}
+
+
+.dark .handsontable { /* 还必须有空格才能生效*/
+    --ht-scrollbar-track-color: var(--bg-color) ;
+    --ht-scrollbar-thumb-color: #b1aeae;
 }
 
 /* *********************

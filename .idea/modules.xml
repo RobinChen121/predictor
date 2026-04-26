@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/predictor.iml" filepath="$PROJECT_DIR$/.idea/predictor.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../robinchen121.github.io/.idea/robinchen121.github.io.iml" filepath="$PROJECT_DIR$/../robinchen121.github.io/.idea/robinchen121.github.io.iml" />
       <module fileurl="file://$PROJECT_DIR$/../online-solver/.idea/solver.iml" filepath="$PROJECT_DIR$/../online-solver/.idea/solver.iml" />
     </modules>
   </component>

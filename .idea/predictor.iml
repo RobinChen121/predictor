@@ -16,5 +16,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="solver" />
     <orderEntry type="library" name="Python 3.13 interpreter library" level="application" />
+    <orderEntry type="module" module-name="robinchen121.github.io" />
   </component>
 </module>
