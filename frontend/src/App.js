@@ -1,22 +1,5 @@
 import React, {useState, useRef, useEffect} from "react";
-<<<<<<< Updated upstream
-import {
-    Layout,
-    Menu,
-    Button,
-    Tooltip,
-    Space,
-    message,
-    Modal,
-    Select,
-    Form,
-    ConfigProvider,
-    theme,
-    Divider
-} from "antd";
-=======
 import {Layout, Menu, Button, Tooltip, Space, message, Modal, Select, Form, ConfigProvider, theme, Divider} from "antd";
->>>>>>> Stashed changes
 import {SunOutlined, MoonOutlined} from "@ant-design/icons";
 import {registerAllModules} from 'handsontable/registry';
 import {useNavigate, Routes, Route, Navigate} from "react-router-dom";
@@ -90,6 +73,7 @@ function App() {
         if (columnOptions.length > 1 && yAxes.length === 0) {
             setYAxes([columnOptions[1].value]);
         }
+        // [] 表示根据什么变量的变化才生效
     }, [columnOptions, yAxes]);
 
 
@@ -216,12 +200,12 @@ function App() {
             const model = new instance.Predictor(input_data);
             let output = model.singleSmooth(0.5);
             output = vectorDoubleToArray(output);
-            console.log(output);
+            // console.log(output);
             input_data.delete();
             model.delete();
 
         } catch (error) {
-            message.error("Prediction failed. Make sure statsmodels is loaded.");
+            message.error("Prediction failed.");
         }
     };
 
