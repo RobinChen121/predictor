@@ -7,6 +7,7 @@ import {useNavigate, Routes, Route, Navigate} from "react-router-dom";
 // ./ 表示 “当前文件所在的目录
 import Dashboard from './dashboard'; // 自动找里面前缀是dashboard的文件
 import AboutPage from './about';
+import {airPassengers, shampooSales} from './dataset'
 
 // 注意：如果 import 报错，请使用此路径或在 index.html 引入 CDN
 // import 'handsontable/dist/handsontable.full.css';
@@ -23,38 +24,64 @@ function App() {
 
     // 初始数据
     const initialData = [
-        ['1', 20, ''],
-        ['2', 27, ''],
-        ['3', 25, ''],
-        ['4', 22, ''],
-        ['5', 18, ''],
-        ['6', 21, ''],
-        ['7', 26, ''],
-        ['8', 19, ''],
-        ['9', 16, ''],
-        ['10', 28, ''],
-        ['11', 25, ''],
-        ['12', 24, '',],
-        ['13', 17, ''],
-        ['14', 23, ''],
-        ['15', 27, '']
-    ];// 创建一个能被 React 监测到的数据仓库: 变动的数据集和数据修改函数
-    const initialColumns = ['Week', 'Calls', '', ''];
+        ['1', 20],
+        ['2', 27],
+        ['3', 25],
+        ['4', 22],
+        ['5', 18],
+        ['6', 21],
+        ['7', 26],
+        ['8', 19],
+        ['9', 16],
+        ['10', 28],
+        ['11', 25],
+        ['12', 24],
+        ['13', 17],
+        ['14', 23],
+        ['15', 27]
+    ];
+    // 创建一个能被 React 监测到的数据仓库: 变动的数据集和数据修改函数
+    const initialColumns = ['Week', 'Calls'];
+    // 转换为 Option 格式
+    // 在 JavaScript 的箭头函数中，如果你使用了大括号 { ... }，它被视为一个代码块，你必须明确使用 return 关键字
+    const headerToOption = (headers) =>
+        headers.map((item, index) => ({label: item, value: index}));
+
+    const DATASET_CONFIG = {
+        air: {
+            name: 'Air Passengers',
+            data: airPassengers,
+            headers: ['Month', 'Passengers']
+        },
+        shampoo: {
+            name: 'Shampoo Sales',
+            data: shampooSales,
+            headers: ['Year-month', 'Sales']
+        }
+    };
+    // 定义 Select dataset 的选项
+    const datasetOptions = [
+        {label: 'Air Passengers (1949-1960)', value: 'air'},
+        {label: 'Shampoo Sales (3 Years)', value: 'shampoo'}
+    ];
+
+    // map 第一个参数为当前正在处理的元素，第二个为索引
+    const initialColumnOptions = headerToOption(initialColumns);
 
     const [instance, setInstance] = useState(null);
     const [plot_result, setResult] = useState(null);
     // 右边小括号的内容为左边第一个变量，传递到函数的值，函数名为第二个元素
     const [darkMode, setDarkMode] = useState(false);
     const [activeModal, setActiveModal] = useState(null); // 存储当前的 Modal ID
-    const [columnOptions, setColumnOptions] = useState([]); // 存储列名
+    const [columnOptions, setColumnOptions] = useState(initialColumnOptions); // 存储列名
     const [xAxis, setXAxis] = useState('default_index');               // 横轴选中的列
     const [yAxes, setYAxes] = useState([]); // 纵轴选中的列（多选）
     const [tableData, setTableData] = useState(initialData);
-    const [columns, setColumns] = useState(initialColumns);
     const [alpha, setAlpha] = useState(0.5);
     const [isCardVisible, setCardVisible] = useState(false);
     const [RMSE, setRMSE] = useState(null);
     const [MAE, setMAE] = useState(null);
+    const [tempDataset, setTempDataset] = useState('air');
 
 
     useEffect(() => {
@@ -115,8 +142,23 @@ function App() {
         // initialData 是你最初定义的那个空数组或默认数组
         // ... 是扩展运算符，将数组拆开再创建一个新数组
         setTableData([...initialData]);
-        setColumns([...initialColumns]);
+        setColumnOptions([...initialColumnOptions]);
+
     };
+
+    const handleDatasetChange = (key) => {
+        const selected = DATASET_CONFIG[key];
+
+        // 更新表格数据
+        setTableData(selected.data);
+
+        // 更新标题
+        setColumnOptions(headerToOption(selected.headers));
+    };
+
+    const handleDatasetChangeClick = () => {
+        setActiveModal('select-dataset');
+    }
 
     const computeRMSE = (raw_data, predict_data) => {
         const n = raw_data.length;
@@ -165,7 +207,8 @@ function App() {
                 data: remainingData
             });
             setTableData(remainingData);
-            setColumns(newHeaders);
+            const newOptions = newHeaders.map((item, index) => ({label: item, value: index}));
+            setColumnOptions(newOptions);
         }
     };
 
@@ -227,6 +270,7 @@ function App() {
                 arr.forEach(x => v.push_back(x));
                 return v;
             }
+
             function vectorDoubleToArray(v) {
                 const arr = [];
                 const n = v.size();
@@ -246,7 +290,7 @@ function App() {
             raw_output.delete();
             model.delete();
 
-            computeRMSE(numericData, output);
+            computeRMSE(numericData.slice(1), output.slice(1));
             computeMAE(numericData, output);
             setCardVisible(true);
         } catch (error) {
@@ -289,11 +333,10 @@ function App() {
             return {
                 // js map 中，第一个参数是当前值，第二个是当前索引
                 x: cleanData.map((_, index) =>
-                    // xIdx === 'default_index' ? index + 1 : cleanData[index][xIdx]
                     {
                         // 使用 String() 包裹，确保无论哪种情况返回的都是字符串
-                        // const val = xIdx === 'default_index' ? (index + 1) : cleanData[index][xIdx];
-                        const val = index + 1;
+                        const val = xIdx === 'default_index' ? (index + 1) : cleanData[index][xIdx];
+                        // const val = index + 1;
                         return String(val);
                     }
                 ),
@@ -325,8 +368,8 @@ function App() {
                 name: 'Forecast',
                 type: 'scatter',
                 mode: 'lines+markers',
-                line: { dash: 'dot', color: 'red' }, // 使用虚线和红色区分预测值
-                marker: { symbol: 'diamond' }
+                line: {dash: 'dot', color: 'red'}, // 使用虚线和红色区分预测值
+                marker: {symbol: 'diamond'}
             });
         }
 
@@ -443,8 +486,8 @@ function App() {
 
                 <Modal
                     title="Exponential Smoothing Settings"
-                    destroyOnHidden={true} //  每次打开都重新初始化内部组件
                     open={activeModal === 'exponential-smoothing'}
+                    destroyOnHidden={true} //  每次打开都重新初始化内部组件
                     onOk={() => {
                         handleExponentialSmooth(yAxes); // 确认时执行绘图逻辑
                         closeModal();
@@ -453,25 +496,10 @@ function App() {
                 >
                     <Form
                         layout="horizontal"
-                        // labelCol={{ span: 6 }}   // 文字占多宽
-                        // wrapperCol={{ span: 18 }} // 下拉框占多宽
                     >
-                        {/*<Form.Item label="Select time index">*/}
-                        {/*    <Select*/}
-                        {/*        placeholder="Choose one column"*/}
-                        {/*        value={xAxis}*/}
-                        {/*        options={[{*/}
-                        {/*            label: 'Default (1, 2, 3...)',*/}
-                        {/*            value: 'default_index'*/}
-                        {/*        }, ...columnOptions]}*/}
-                        {/*        onChange={setXAxis}*/}
-                        {/*    />*/}
-                        {/*</Form.Item>*/}
-
                         <Form.Item label="Select data for prediction">
                             <Select
                                 // mode="multiple"
-                                maxTagCount="responsive"
                                 options={columnOptions}
                                 onChange={(val) => setYAxes([val])}
                             />
@@ -480,16 +508,39 @@ function App() {
                     <Divider/>
                 </Modal>
 
+                <Modal
+                    title="Select a dataset"
+                    destroyOnHidden={true} //  每次打开都重新初始化内部组件
+                    open={activeModal === 'select-dataset'}
+                    onOk={() => {
+                        handleDatasetChange(tempDataset);
+                        closeModal();
+                    }}
+                    onCancel={closeModal}
+                >
+                    <Form layout="horizontal">
+                        <Form.Item label="Datasets: ">
+                            <Select
+                                // mode="multiple"
+                                placeholder="Choose data"
+                                options={datasetOptions}
+                                onChange={(value) => setTempDataset(value)}
+                                defaultValue={tempDataset} // 初始显示
+                            />
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
                 {/* 2. 核心修复：Routes 应该放在这里，控制主体内容的切换 */}
                 <Routes>
                     <Route path="/" element={
                         <Dashboard
-                            darkMode ={darkMode}
+                            darkMode={darkMode}
                             table={{
                                 hotRef,
                                 tableData,
                                 setTableData,
-                                columns,
+                                columnOptions,
                                 handleSetHeader,
                                 resetData,
                             }}
@@ -497,6 +548,7 @@ function App() {
                                 handleVisualizeClick,
                                 handleExponentialSmoothClick,
                                 handleExponentialSmooth,
+                                handleDatasetChangeClick
                             }}
                             chart={{
                                 plot_result,

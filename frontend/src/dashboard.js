@@ -18,14 +18,15 @@ const Dashboard = ({
         hotRef,
         tableData,
         setTableData,
-        columns,
+        columnOptions,
         handleSetHeader,
         resetData,
     } = table;
     const {
         handleVisualizeClick,
         handleExponentialSmoothClick,
-        handleExponentialSmooth
+        handleExponentialSmooth,
+        handleDatasetChangeClick
     } = actions;
     const {
         plot_result,
@@ -111,7 +112,8 @@ const Dashboard = ({
                                 <HotTable
                                     ref={hotRef}
                                     data={tableData}
-                                    colHeaders={columns}
+                                    // map 第一个参数为当前元素本身
+                                    colHeaders={columnOptions.map(options => options.label)}
                                     afterChange={(changes) => {
                                         if (changes) {
                                             const updatedData = hotRef.current.hotInstance.getData();
@@ -147,7 +149,17 @@ const Dashboard = ({
                                                     const newName = prompt("New column head", headers[col]);
                                                     if (newName) {
                                                         headers[col] = newName;
+                                                        // 更新实例（即时生效）
                                                         this.updateSettings({colHeaders: headers});
+
+                                                        // setColumnOptions(prevOptions => {
+                                                        //     const newOptions = [...prevOptions];
+                                                        //     // 找到对应的配置项并更新 label
+                                                        //     if (newOptions[col]) {
+                                                        //         newOptions[col] = { ...newOptions[col], label: newName };
+                                                        //     }
+                                                        //     return newOptions;
+                                                        // });
                                                     }
                                                 }
                                             }
@@ -172,7 +184,7 @@ const Dashboard = ({
                                             height: 320, // 稍微调整高度以适应布局
                                             paper_bgcolor: 'transparent',
                                             plot_bgcolor: 'transparent',
-                                            font: {color: darkMode ? "#fff": "#000" },
+                                            font: {color: darkMode ? "#fff" : "#000"},
                                             margin: {t: 30, r: 30, b: 50, l: 60},
                                             xaxis: {
                                                 // 修正：增加 text 键，并提供后备默认值
@@ -208,18 +220,28 @@ const Dashboard = ({
                     <Space orientation="vertical" size={24} style={{width: '100%'}}>
                         <Card className="side-card">
                             <Space orientation="vertical" style={{width: '100%'}}>
-                                <Button block onClick={handleSetHeader}
+
+                                {/*<Divider/>*/}
+
+                                <Button block onClick={handleDatasetChangeClick}
                                     // size={"large"}
                                         className="common-button"
                                 >
-                                    Set first row as headers
+                                    Select some dataset
                                 </Button>
-                                {/*<Divider/>*/}
+
                                 <Button block onClick={resetData}
                                     // size={"large"}
                                         className="common-button"
                                 >
                                     Reset to default data
+                                </Button>
+
+                                <Button block onClick={handleSetHeader}
+                                    // size={"large"}
+                                        className="common-button"
+                                >
+                                    Set first row as headers
                                 </Button>
                             </Space>
                         </Card>
@@ -228,20 +250,34 @@ const Dashboard = ({
                             <Card className="side-card parameter" title={"Parameters"}>
                                 {/* 局部样式控制*/}
                                 {/* 这是 <span> 最核心的用法。它本身没有任何默认样式（没有边距、没有加粗），它的存在就是为了让你能给某一段文字加上 CSS*/}
-                                <span style={{fontWeight: "bold"}}>α: {alpha}</span>
                                 {/*flex: 1：让元素自动填满父容器中所有剩余的可用空间*/}
-                                <div style={{flex: 1}}> {
-                                    <Slider
-                                        min={0} s
-                                        max={1}
-                                        step={0.1}
-                                        marks={{0: '0', 1: '1'}}
-                                        onChange={(value) => setAlpha(value)}
-                                        onChangeComplete={(value) => handleExponentialSmooth(value)} // 只有松开鼠标时才执行计算
-                                        defaultValue={alpha}
-                                        // value={alpha}
-                                    />
-                                }
+                                <div className = "parameter-slider">
+                                    {/* 1. 标签部分 */}
+                                    <span style={{
+                                        fontWeight: "bold",
+                                        // whiteSpace: "nowrap", // 防止 alpha 过长换行
+                                        marginBottom: "0px"    // 微调：因为 Slider 的 marks 会撑开高度，这里手动微调对齐轴心
+                                    }}>
+                                    α: {alpha}
+                                    </span>
+
+                                    {/* 2. 滑动条容器 */}
+                                    <div style={{flex: 1}}>
+                                        <Slider
+                                            min={0}
+                                            max={1}
+                                            step={0.1}
+                                            marks={{0: '0', 1: '1'}}
+                                            onChange={(value) => setAlpha(value)}
+                                            onChangeComplete={(value) => handleExponentialSmooth(value)}
+                                            defaultValue={alpha}
+                                            // 如果需要受控，取消下面这一行的注释
+                                            // value={alpha}
+                                            style={{
+                                                margin: "0 0px", // 左右留白，防止滑块圆点超出容器
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </Card>
                         )}

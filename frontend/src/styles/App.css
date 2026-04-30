@@ -133,6 +133,9 @@ span.ant-menu-title-content {
     min-height: calc(100vh - 128px);
 }
 
+/* ---------------------------------------------------------
+  card
+ */
 /* 卡片样式美化 */
 .side-card, .main-card, .plot-card {
     background: var(--container-bg) !important;
@@ -203,6 +206,17 @@ span.ant-menu-title-content {
     /*border-radius: 0 0 8px 8px; !* 保持底部圆角一致 *!*/
 }
 
+/* 中间的空格 (后代选择器)含义： 在前面的元素内部，寻找所有的后代元素
+若没有空格，表示找一个同时具备这两个类名的 HTML 元素
+*/
+.side-card.parameter .ant-card-body {
+    padding: 20px 10px 25px 10px; /* 上，右下左 */
+}
+
+
+/* ---------------------------------------------------------
+  table
+ */
 /* 让表头背景色更高级一点 */
 .custom-handsontable thead th {
     font-weight: 600;
@@ -427,4 +441,14 @@ span.ant-menu-title-content {
 .markdown-body a {
     color: var(--primary-color) !important;
     /*text-decoration: underline; !* 显示下划线 *!*/
+}
+
+/****************
+ slider
+ */
+.parameter-slider{
+    display: flex;
+    align-items: center;  /* 关键：垂直居中对齐标签和滑动条 */
+    gap: 15px;           /*  标签和滑动条之间的间距 */
+    width: 100%;        /* 容器宽度 */
 }
