@@ -86,7 +86,7 @@ function App() {
     // map 第一个参数为当前正在处理的元素，第二个为索引
     const initialColumnOptions = headerToOption(initialColumns);
 
-    const [instance, setWasmInstance] = useState(null);
+    const [wasmInstance, setWasmInstance] = useState(null);
     // 右边小括号里是初始值，仅在组件挂载时执行
     const [uiState, setUiState] = useState({
         darkMode: false,
@@ -99,7 +99,9 @@ function App() {
     const [chartConfig, setChartConfig] = useState({
         xAxis: 'default_index',   // 横轴选中的列
         yAxes: [], // 纵轴选中的列（多选）
-        featureColumns: []
+        isScatter: false,
+        scatterYAxes: [],
+        featureColumns: [],
     });
     // 不要与上面合并，因为 setPlotResult 可以有很多参数
     const [plotResult, setPlotResult] = useState(null);
@@ -128,7 +130,7 @@ function App() {
         async function init() {
             // 检查全局变量是否存在（由 public/index.html 中的 <script> 标签注入）
             // 如果你在 emcc 编译时用了 -s EXPORT_NAME="createPredictModule"，这里就改用 window.createPredictModule
-            const createModule = window.predictModule;
+            const createModule = window.wasmPredict;
 
             if (typeof createModule !== 'function') {
                 console.error("Wasm 脚本尚未加载，请确保 index.html 中已引入 predict.js");
@@ -439,10 +441,9 @@ function App() {
             return isNaN(parseFloat(val)) ? null : parseFloat(val);
         });
 
-        // 过滤掉非数字或空值，转为浮点数
+        // 转为浮点数，空值视为 0
         const numericData = rawData
-            .map(val => parseFloat(val))
-            .filter(val => !isNaN(val));
+            .map(val => Number(val) || 0)
 
         try {
             if (uiState.radioPredictOption === 1) {
@@ -452,14 +453,14 @@ function App() {
                 computeMAD(numericData.slice(params.k), output.slice(params.k));
             }
 
-            if (uiState.radioPredictOption === 2) {
-                function arrayToVectorDouble(arr) {
-                    let v = new instance.VectorDouble();
+            if (uiState.radioPredictOption !== 1) {
+                function arrayToVector(arr) {
+                    let v = new wasmInstance.Vector();
                     arr.forEach(x => v.push_back(x));
                     return v;
                 }
 
-                function vectorDoubleToArray(v) {
+                function vectorToArray(v) {
                     const arr = [];
                     const n = v.size();
                     for (let i = 0; i < n; i++) {
@@ -468,44 +469,50 @@ function App() {
                     return arr;
                 }
 
-                let input_data = arrayToVectorDouble(numericData);
-                const model = new instance.Predictor(input_data);
-                let raw_output = model.singleSmooth(params.alpha);
-                let output = vectorDoubleToArray(raw_output);
-                // map 使用大括号时必须用 return
-                output = output.map((value) => value.toFixed(4));
-                // console.log(output);
-                plotInputData("default_index", [chartConfig.yAxes], output);
-                input_data.delete();
-                raw_output.delete();
-                model.delete();
-                message.success("Single smoothing prediction finished");
+                let input_data = arrayToVector(numericData);
+                if (uiState.radioPredictOption === 2) {
+                    let raw_output = wasmInstance.singleSmooth(input_data, params.alpha);
+                    let output = vectorToArray(raw_output);
+                    // map 使用大括号时必须用 return
+                    output = output.map((value) => value.toFixed(4));
+                    // console.log(output);
+                    plotInputData("default_index", [chartConfig.yAxes], output);
+                    input_data.delete();
+                    raw_output.delete();
+                    // model.delete();
+                    message.success("Single smoothing prediction finished");
 
-                computeRMSE(numericData.slice(1), output.slice(1));
-                computeMAD(numericData.slice(1), output.slice(1));
-                // 添加数据到表格里
-                if (uiState.checkAppendData === true) {
-                    // Key 是给计算机看的（身份证），Label 是给用户看的（姓名）
-                    const newColKey = `pred_1smooth_${params.alpha}`;
-                    const columnName = tableConfig.columnOptions[chartConfig.yAxes].label;
-                    const newColLabel = `1-smooth(${params.alpha})-forecast-${columnName}`;
+                    computeRMSE(numericData.slice(1), output.slice(1));
+                    computeMAD(numericData.slice(1), output.slice(1));
+                    // 添加数据到表格里
+                    if (uiState.checkAppendData === true) {
+                        // Key 是给计算机看的（身份证），Label 是给用户看的（姓名）
+                        const newColKey = `pred_1smooth_${params.alpha}`;
+                        const columnName = tableConfig.columnOptions[chartConfig.yAxes].label;
+                        const newColLabel = `1-smooth(${params.alpha})-forecast-${columnName}`;
 
-                    appendColumn(newColKey, newColLabel, output);
+                        appendColumn(newColKey, newColLabel, output);
+                    }
+                }
+                if (uiState.radioPredictOption === 5) {
+                    const feature_column_index = chartConfig.featureColumns;
+
+                    const vector_X = [];
+                    tableConfig.tableData.forEach(item => {
+                        feature_column_index.forEach(key => {
+                            // 空值视为0
+                            vector_X.push(Number(item[key]) || 0);
+                        });
+                    });
+
+                    let model = new wasmInstance.Regression(vector_X, input_data);
+                    let weights = model.regression();
+                    console.log('test');
+
                 }
             }
 
-            if (uiState.radioPredictOption === 5) {
-                const feature_column_index = chartConfig.featureColumns;
 
-                const vector_X = [];
-                tableConfig.tableData.forEach(item => {
-                    feature_column_index.forEach(key => {
-                        vector_X.push(item[key]);
-                    });
-                });
-                console.log('test');
-
-            }
 
             setUiState(prevState => ({...prevState, isCardVisible: true}));
         } catch (error) {
@@ -525,8 +532,7 @@ function App() {
         setPlotResult(prev => ({...prev, showChart: true}));
         const {tableData, columnOptions} = tableConfig;
         const isLineChart = uiState.radioChartOption === 1;
-        const isScatterChart = uiState.radioChartOption === 2;
-        const isHistChart = uiState.radioChartOption === 3;
+        const isHistChart = uiState.radioChartOption === 2;
 
         // 检查 X 轴列是否有值
         // row["default_index"] 会返回 undefined, 它不等于 null, 也不是空值
@@ -579,7 +585,7 @@ function App() {
             }
         };
 
-        if (isLineChart || isScatterChart || predict_array?.length > 0) {
+        if (isLineChart || predict_array?.length > 0) {
             // 预计算 X 轴数据，避免在 yIdxArray.map 内部重复循环
             const commonX = cleanData.map((row, index) =>
                 xIdx === 'default_index' ? String(index + 1) : String(row[xIdx])
@@ -590,14 +596,14 @@ function App() {
                     y: cleanData.map(row => parseValue(row[yIdx])),
                     name: columnOptions[yIdx]?.label || yIdx,
                     type: 'scatter',
-                    mode: isScatterChart ? 'markers' : 'lines+markers',
+                    mode: chartConfig.isScatter && chartConfig.scatterYAxes?.includes(yIdx) ? 'markers' : 'lines+markers',
                 })) :
                 ({
                     x: commonX,
                     y: cleanData.map(row => parseValue(row[yIdxArray])),
                     name: columnOptions[yIdxArray]?.label || yIdxArray,
                     type: 'scatter',
-                    mode: isScatterChart ? 'markers' : 'lines+markers',
+                    mode: chartConfig.isScatter && chartConfig.scatterYAxes?.includes(yIdxArray) ? 'markers' : 'lines+markers',
                 })
 
             // 处理预测数据
@@ -713,7 +719,8 @@ function App() {
 
                                 <Tooltip title="Switch Theme">
                                     <Button type="text" onClick={toggleTheme} className={"theme-button"}
-                                            icon={uiState.darkMode ? <SunOutlined/> : <MoonOutlined/>}/>
+                                            icon={uiState.darkMode ? <SunOutlined/> :
+                                                <MoonOutlined/>}/>
                                 </Tooltip>
                             </Space>
                         </div>
@@ -734,13 +741,12 @@ function App() {
                     <Radio.Group onChange={radioChartSelect} value={uiState.radioChartOption}>
                         <Space orientation="vertical">
                             <Radio value={1}>Line chart</Radio>
-                            <Radio value={2}>Scatter chart</Radio>
-                            <Radio value={3}>Histogram chart</Radio>
+                            <Radio value={2}>Histogram chart</Radio>
                         </Space>
                     </Radio.Group>
                     <Divider/>
 
-                    {(uiState.radioChartOption === 1 || uiState.radioChartOption === 2) &&
+                    {(uiState.radioChartOption === 1) &&
                         <Form
                             layout="vertical"
                             wrapperCol={{span: 16}} // 24栅格制，8代表占据 1/3 的宽度
@@ -775,10 +781,53 @@ function App() {
                                     options={tableConfig.columnOptions}
                                 />
                             </Form.Item>
+
+                            {/* 散点图开关：使用 valuePropName="checked" 确保布尔值正确同步 */}
+                            {/*valuePropName 就像一个适配器。如果子组件不是用 value 来表示它的状态（比如 Checkbox, Switch 用 checked），
+                            必须通过这个属性告诉 Form：“喂，别找 value 了，去它的 checked 属性里看！*/}
+                            <Form.Item name="isScatter" valuePropName="checked">
+                                <Checkbox>Scatter plot for some Y-Axis</Checkbox>
+                            </Form.Item>
+
+                            {/* 动态联动：只有勾选了 isScatter，才显示具体 Y 轴的选择框 */}
+                            <Form.Item
+                                // 结构是：
+                                // Form.Item (逻辑层) -> Form.Item (实际显示的 UI 层)
+                                // 为了不让逻辑层干扰 UI 布局，noStyle 是必须的
+                                noStyle
+                                // 只有当这两个字段中的任意一个发生变化时，才会触发该 Form.Item 内部代码的重新执行（渲染）
+                                // 如果用户改了 X 轴，这里面就不会动，节省了计算资源
+                                shouldUpdate={(prevValues, currentValues) =>
+                                    prevValues.isScatter !== currentValues.isScatter || prevValues.yAxes !== currentValues.yAxes
+                                }
+                            >
+                                {/* getFieldValue 函数从 form 提取所有记录的值*/}
+                                {({ getFieldValue }) => {
+                                    const isScatter = getFieldValue('isScatter');
+                                    const selectedYAxes = getFieldValue('yAxes') || [];
+
+                                    return isScatter ? (
+                                        <Form.Item
+                                            label="Specific Y-Axis for Scatter"
+                                            name="scatterYAxes"
+                                            // 过滤选项：只显示已经在上面 yAxes 里选中的列
+                                            extra="Select which of the chosen Y-axes should be rendered as scatter points."
+                                        >
+                                            <Select
+                                                mode="multiple"
+                                                placeholder="Select scatter columns"
+                                                options={tableConfig.columnOptions.filter(opt =>
+                                                    selectedYAxes.includes(opt.value)
+                                                )}
+                                            />
+                                        </Form.Item>
+                                    ) : null;
+                                }}
+                            </Form.Item>
                         </Form>
                     }
 
-                    {uiState.radioChartOption === 3 &&
+                    {uiState.radioChartOption === 2 &&
                         <Form
                             layout="vertical"
                             wrapperCol={{span: 16}} // 24栅格制，8代表占据 1/3 的宽度
@@ -818,7 +867,10 @@ function App() {
                             <Select
                                 // mode="multiple"
                                 options={tableConfig.columnOptions}
-                                onChange={(val) => setChartConfig(prevState => ({...prevState, yAxes: val}))}
+                                onChange={(val) => setChartConfig(prevState => ({
+                                    ...prevState,
+                                    yAxes: val
+                                }))}
                             />
                         </Form.Item>
                     </Form>
@@ -926,7 +978,10 @@ function App() {
                     <Form>
                         <Form.Item label={'The number of future periods to predict'} name={"n_predict"}>
                             <InputNumber min={1} step={1} placeholder={1}
-                                         onChange={(val) => setParams(prevState => ({...prevState, n_predict: val}))}/>
+                                         onChange={(val) => setParams(prevState => ({
+                                             ...prevState,
+                                             n_predict: val
+                                         }))}/>
                         </Form.Item>
                     </Form>
                     <Divider/>
