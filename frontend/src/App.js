@@ -99,8 +99,8 @@ function App() {
     const [chartConfig, setChartConfig] = useState({
         xAxis: 'default_index',   // 横轴选中的列
         yAxes: [], // 纵轴选中的列（多选）
-        isScatter: false,
-        scatterYAxes: [],
+        // isScatter: false,
+        // scatterYAxes: [],
         featureColumns: [],
     });
     // 不要与上面合并，因为 setPlotResult 可以有很多参数
@@ -242,7 +242,7 @@ function App() {
         // 添加数据到表格里
         if (uiState.checkAppendData === true) {
             // Key 是给计算机看的（身份证），Label 是给用户看的（姓名）。
-            const newColKey = `pred_ma_${k}`;
+            const newColKey = tableConfig.columnOptions.length; //`pred_ma_${k}`;
             const columnName = tableConfig.columnOptions[chartConfig.yAxes].label;
             const newColLabel = `MA(${k})-forecast-${columnName}`;
 
@@ -251,16 +251,16 @@ function App() {
         return result;
     };
 
-    const appendColumn = (newColKey, newColLabel, result) => {
+    const appendColumn = (newColKey, newColLabel, predict_values) => {
         const updatedTableData = tableConfig.tableData.map((row, index) => ({
             ...row,
-            [newColKey]: result[index]
+            [newColKey]: predict_values[index]
         }));
 
         // 如果预测结果比原数据多出点，补行
-        if (result.length > tableConfig.tableData.length) {
-            for (let i = tableConfig.tableData.length; i < result.length; i++) {
-                updatedTableData.push({[newColKey]: result[i]});
+        if (predict_values.length > tableConfig.tableData.length) {
+            for (let i = tableConfig.tableData.length; i < predict_values.length; i++) {
+                updatedTableData.push({[newColKey]: predict_values[i]});
             }
         }
 
@@ -426,7 +426,7 @@ function App() {
                 const value = chartConfig.featureColumns[0] === "default_index" ? i + 1 : tableConfig.tableData[i][chartConfig.featureColumns[j]];
                 sum += value * weights[j + 1];
             }
-            output.push(intersect + sum);
+            output.push((intersect + sum).toFixed(4));
         }
         return output;
     }
@@ -501,7 +501,7 @@ function App() {
                     // 添加数据到表格里
                     if (uiState.checkAppendData === true) {
                         // Key 是给计算机看的（身份证），Label 是给用户看的（姓名）
-                        const newColKey = `pred_1smooth_${params.alpha}`;
+                        const newColKey = tableConfig.columnOptions.length; // `pred_1smooth_${params.alpha}`;
                         const columnName = tableConfig.columnOptions[chartConfig.yAxes].label;
                         const newColLabel = `1-smooth(${params.alpha})-forecast-${columnName}`;
 
@@ -539,7 +539,7 @@ function App() {
                     // 添加数据到表格里
                     if (uiState.checkAppendData === true) {
                         // Key 是给计算机看的（身份证），Label 是给用户看的（姓名）
-                        const newColKey = `pred_regression`;
+                        const newColKey = tableConfig.columnOptions.length;
                         const columnName = tableConfig.columnOptions[chartConfig.yAxes].label;
                         const newColLabel = `regression-forecast-${columnName}`;
 
@@ -626,20 +626,14 @@ function App() {
                 xIdx === 'default_index' ? String(index + 1) : String(row[xIdx])
             );
 
-            traces = yIdxArray.length > 0 ? yIdxArray.map(yIdx => ({
-                    x: commonX,
-                    y: cleanData.map(row => parseValue(row[yIdx])),
-                    name: columnOptions[yIdx]?.label || yIdx,
-                    type: 'scatter',
-                    mode: chartConfig.isScatter && chartConfig.scatterYAxes?.includes(yIdx) ? 'markers' : 'lines+markers',
-                })) :
-                ({
-                    x: commonX,
-                    y: cleanData.map(row => parseValue(row[yIdxArray])),
-                    name: columnOptions[yIdxArray]?.label || yIdxArray,
-                    type: 'scatter',
-                    mode: chartConfig.isScatter && chartConfig.scatterYAxes?.includes(yIdxArray) ? 'markers' : 'lines+markers',
-                })
+            const yIndices = Array.isArray(yIdxArray) ? yIdxArray : [yIdxArray];
+            const traces = yIndices.map(yIdx => ({
+                x: commonX,
+                y: cleanData.map(row => parseValue(row[yIdx])),
+                name: columnOptions[yIdx]?.label || yIdx,
+                type: 'scatter',
+                mode: 'lines+markers',
+            }));
 
             // 处理预测数据
             // 处理 predict_array (假设它是一个数值数组)
@@ -663,24 +657,25 @@ function App() {
                     xAxisName: xAxisTitle,
                     layout: commonLayout,
                 });
-            } else {
-                setPlotResult({
-                    showChart: true,
-                    data: traces,
-                    xAxisName: xAxisTitle,
-                    layout: {
-                        ...commonLayout,
-                        yaxis: {
-                            title: {text: isHistChart ? "Frequency (Count)" : "Value"},
-                            autorange: true,
-                            zeroline: false,
-                            linecolor: uiState.darkMode ? "#fff" : "#69666a",
-                            showgrid: false,
-                            linewidth: 2,
-                        }
-                    }
-                });
             }
+            // else {
+            //     setPlotResult({
+            //         showChart: true,
+            //         data: traces,
+            //         xAxisName: xAxisTitle,
+            //         layout: {
+            //             ...commonLayout,
+            //             yaxis: {
+            //                 title: {text: isHistChart ? "Frequency (Count)" : "Value"},
+            //                 autorange: true,
+            //                 zeroline: false,
+            //                 linecolor: uiState.darkMode ? "#fff" : "#69666a",
+            //                 showgrid: false,
+            //                 linewidth: 2,
+            //             }
+            //         }
+            //     });
+            // }
         } else if (isHistChart) {
             // 直方图分支
             xAxisTitle = columnOptions.find(opt => opt.value === xIdx)?.label || "Value";
@@ -696,7 +691,15 @@ function App() {
                 xAxisName: xAxisTitle,
                 layout: {
                     ...commonLayout,
-                    title: {text: "Data distribution"}
+                    title: {text: "Data distribution"},
+                    yaxis: {
+                        title: {text: isHistChart ? "Frequency (Count)" : "Value"},
+                        autorange: true,
+                        zeroline: false,
+                        linecolor: uiState.darkMode ? "#fff" : "#69666a",
+                        showgrid: false,
+                        linewidth: 2,
+                    }
                 } // 标题必须通过这个text来定义
             });
         }
@@ -820,45 +823,45 @@ function App() {
                             {/* 散点图开关：使用 valuePropName="checked" 确保布尔值正确同步 */}
                             {/*valuePropName 就像一个适配器。如果子组件不是用 value 来表示它的状态（比如 Checkbox, Switch 用 checked），
                             必须通过这个属性告诉 Form：“喂，别找 value 了，去它的 checked 属性里看！*/}
-                            <Form.Item name="isScatter" valuePropName="checked">
-                                <Checkbox>Scatter plot for some Y-Axis</Checkbox>
-                            </Form.Item>
+                            {/*<Form.Item name="isScatter" valuePropName="checked">*/}
+                            {/*    <Checkbox>Scatter plot for some Y-Axis</Checkbox>*/}
+                            {/*</Form.Item>*/}
 
                             {/* 动态联动：只有勾选了 isScatter，才显示具体 Y 轴的选择框 */}
-                            <Form.Item
-                                // 结构是：
-                                // Form.Item (逻辑层) -> Form.Item (实际显示的 UI 层)
-                                // 为了不让逻辑层干扰 UI 布局，noStyle 是必须的
-                                noStyle
-                                // 只有当这两个字段中的任意一个发生变化时，才会触发该 Form.Item 内部代码的重新执行（渲染）
-                                // 如果用户改了 X 轴，这里面就不会动，节省了计算资源
-                                shouldUpdate={(prevValues, currentValues) =>
-                                    prevValues.isScatter !== currentValues.isScatter || prevValues.yAxes !== currentValues.yAxes
-                                }
-                            >
-                                {/* getFieldValue 函数从 form 提取所有记录的值*/}
-                                {({getFieldValue}) => {
-                                    const isScatter = getFieldValue('isScatter');
-                                    const selectedYAxes = getFieldValue('yAxes') || [];
+                            {/*<Form.Item*/}
+                            {/*    // 结构是：*/}
+                            {/*    // Form.Item (逻辑层) -> Form.Item (实际显示的 UI 层)*/}
+                            {/*    // 为了不让逻辑层干扰 UI 布局，noStyle 是必须的*/}
+                            {/*    noStyle*/}
+                            {/*    // 只有当这两个字段中的任意一个发生变化时，才会触发该 Form.Item 内部代码的重新执行（渲染）*/}
+                            {/*    // 如果用户改了 X 轴，这里面就不会动，节省了计算资源*/}
+                            {/*    shouldUpdate={(prevValues, currentValues) =>*/}
+                            {/*        prevValues.isScatter !== currentValues.isScatter || prevValues.yAxes !== currentValues.yAxes*/}
+                            {/*    }*/}
+                            {/*>*/}
+                            {/*    /!* getFieldValue 函数从 form 提取所有记录的值*!/*/}
+                            {/*    {({getFieldValue}) => {*/}
+                            {/*        const isScatter = getFieldValue('isScatter');*/}
+                            {/*        const selectedYAxes = getFieldValue('yAxes') || [];*/}
 
-                                    return isScatter ? (
-                                        <Form.Item
-                                            label="Specific Y-Axis for Scatter"
-                                            name="scatterYAxes"
-                                            // 过滤选项：只显示已经在上面 yAxes 里选中的列
-                                            extra="Select which of the chosen Y-axes should be rendered as scatter points."
-                                        >
-                                            <Select
-                                                mode="multiple"
-                                                placeholder="Select scatter columns"
-                                                options={tableConfig.columnOptions.filter(opt =>
-                                                    selectedYAxes.includes(opt.value)
-                                                )}
-                                            />
-                                        </Form.Item>
-                                    ) : null;
-                                }}
-                            </Form.Item>
+                            {/*        return isScatter ? (*/}
+                            {/*            <Form.Item*/}
+                            {/*                label="Specific Y-Axis for Scatter"*/}
+                            {/*                name="scatterYAxes"*/}
+                            {/*                // 过滤选项：只显示已经在上面 yAxes 里选中的列*/}
+                            {/*                extra="Select which of the chosen Y-axes should be rendered as scatter points."*/}
+                            {/*            >*/}
+                            {/*                <Select*/}
+                            {/*                    mode="multiple"*/}
+                            {/*                    placeholder="Select scatter columns"*/}
+                            {/*                    options={tableConfig.columnOptions.filter(opt =>*/}
+                            {/*                        selectedYAxes.includes(opt.value)*/}
+                            {/*                    )}*/}
+                            {/*                />*/}
+                            {/*            </Form.Item>*/}
+                            {/*        ) : null;*/}
+                            {/*    }}*/}
+                            {/*</Form.Item>*/}
                         </Form>
                     }
 
